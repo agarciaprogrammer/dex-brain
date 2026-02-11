@@ -6,6 +6,7 @@ type Task = {
   id: string;
   createdAt: string;
   title: string;
+  description?: string;
   area:
     | "Infra"
     | "Backend"
@@ -26,6 +27,7 @@ type Task = {
 
 type TaskForm = {
   title: string;
+  description: string;
   area: Task["area"];
   type: Task["type"];
   origin: Task["origin"];
@@ -41,6 +43,7 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 const defaultForm: TaskForm = {
   title: "",
+  description: "",
   area: "Infra",
   type: "Ticket",
   origin: "Self",
@@ -102,6 +105,7 @@ export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [form, setForm] = useState<TaskForm>(defaultForm);
   const [activeFilter, setActiveFilter] = useState<string>("All Tasks");
   const [search, setSearch] = useState("");
@@ -162,6 +166,7 @@ export default function Home() {
     // Start create flow
     setEditingTask(null);
     setForm(defaultForm);
+    setViewingTask(null);
     setIsModalOpen(true);
   }
 
@@ -176,6 +181,7 @@ export default function Home() {
     if (editingTask) {
       setForm({
         title: editingTask.title,
+        description: editingTask.description ?? "",
         area: editingTask.area,
         type: editingTask.type,
         origin: editingTask.origin,
@@ -201,6 +207,7 @@ export default function Home() {
           ? {
               ...t,
               title: form.title.trim(),
+              description: form.description ? form.description : "",
               area: form.area,
               type: form.type,
               origin: form.origin,
@@ -218,11 +225,13 @@ export default function Home() {
       // Close and clear editing state
       setIsModalOpen(false);
       setEditingTask(null);
+      setViewingTask(null);
     } else {
       const newTask: Task = {
         id: crypto.randomUUID(),
         createdAt: new Date().toISOString(),
         title: form.title.trim(),
+        description: form.description ? form.description : "",
         area: form.area,
         type: form.type,
         origin: form.origin,
@@ -294,6 +303,7 @@ export default function Home() {
       if (e.key === "n") {
         setEditingTask(null);
         setForm(defaultForm);
+        setViewingTask(null);
         setIsModalOpen(true);
       } else if (e.key === "/") {
         e.preventDefault();
@@ -302,6 +312,7 @@ export default function Home() {
         setIsModalOpen(false);
         setShowDeleteConfirm(false);
         setEditingTask(null);
+        setViewingTask(null);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -442,6 +453,10 @@ export default function Home() {
     const avgUrgency = tasks.length ? (urgencySum / tasks.length).toFixed(1) : "-";
     return { top, byArea, byStatus, avgImpact, avgUrgency };
   }, [tasks]);
+
+  const viewingScore = viewingTask ? calculateScore(viewingTask) : 0;
+  const viewingDaysLeft = viewingTask ? daysUntilDeadline(viewingTask.deadline) : null;
+  const viewingCreatedAt = viewingTask ? new Date(viewingTask.createdAt).toLocaleString() : "";
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -699,7 +714,7 @@ export default function Home() {
                       <tr
                         key={task.id}
                         onClick={() => {
-                          setEditingTask(task);
+                          setViewingTask(task);
                         }}
                         className={`group cursor-pointer transition-colors hover:bg-slate-800/60 ${
                           isDone ? "opacity-60" : ""
@@ -740,6 +755,7 @@ export default function Home() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                setViewingTask(null);
                                 setEditingTask(task);
                               }}
                               title="Edit"
@@ -835,6 +851,103 @@ export default function Home() {
         + Add Task
       </button>
 
+      {viewingTask && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/70 p-4">
+          <div className="w-full max-w-3xl overflow-hidden rounded-sm border border-slate-800 bg-slate-900 shadow-xl animate-[fade-in_150ms_ease-out]">
+            <div className="flex items-start justify-between border-b border-slate-800 px-5 py-4">
+              <div>
+                <div className="text-lg font-semibold text-slate-100">{viewingTask.title}</div>
+                <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
+                  Task Overview
+                </div>
+              </div>
+              <span className="rounded-sm border border-slate-800 bg-slate-950 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                {viewingTask.status}
+              </span>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Area</div>
+                    <div className="text-sm text-slate-200">{viewingTask.area}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Type</div>
+                    <div className="text-sm text-slate-200">{viewingTask.type}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Impact</div>
+                    <div className="text-sm text-slate-200">{viewingTask.impact}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Urgency</div>
+                    <div className="text-sm text-slate-200">{viewingTask.urgency}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Effort</div>
+                    <div className="text-sm text-slate-200">{viewingTask.effort}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Deadline</div>
+                    <div className="text-sm text-slate-200">
+                      {viewingTask.deadline ? viewingTask.deadline : "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Days Left</div>
+                    <div className="text-sm text-slate-200">
+                      {viewingDaysLeft === null ? "—" : viewingDaysLeft}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Score</div>
+                    <div className="text-sm text-slate-200">{viewingScore}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Created</div>
+                    <div className="text-sm text-slate-200">{viewingCreatedAt}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 border-t border-slate-800 pt-4">
+                <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Description</div>
+                <div className="mt-2 whitespace-pre-wrap text-sm text-slate-200">
+                  {viewingTask.description?.trim()
+                    ? viewingTask.description
+                    : "No description provided."}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-slate-800 px-5 py-3">
+              <button
+                type="button"
+                onClick={() => setViewingTask(null)}
+                className="h-8 rounded-sm border border-slate-800 bg-transparent px-3 text-xs uppercase tracking-[0.2em] text-slate-300 hover:bg-slate-800"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewingTask(null);
+                  setEditingTask(viewingTask);
+                }}
+                className="h-8 rounded-sm border border-slate-800 bg-slate-800 px-3 text-xs uppercase tracking-[0.2em] text-slate-100 hover:bg-slate-700"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
           <div className="w-full max-w-sm overflow-hidden rounded-sm border border-slate-800 bg-slate-900 shadow-xl animate-[fade-in_150ms_ease-out]">
@@ -895,6 +1008,20 @@ export default function Home() {
                     }))
                   }
                   required
+                />
+              </label>
+
+              <label className="text-[11px] uppercase tracking-[0.2em] text-slate-400">
+                Description
+                <textarea
+                  className="mt-1 min-h-[100px] w-full rounded-sm border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-slate-600 focus:outline-none"
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
+                  }
                 />
               </label>
 

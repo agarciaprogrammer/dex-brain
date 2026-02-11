@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
+  --background: #131920;
+  --panel: #161d26;
   --foreground: #f4f4f5;
 }
 
@@ -51,7 +52,19 @@
 
 body {
   min-height: 100vh;
-  background: #09090b;
+  background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), sans-serif;
+}
+
+.bg-slate-950 {
+  background-color: var(--background);
+}
+
+.bg-slate-900 {
+  background-color: var(--panel);
+}
+
+.bg-slate-950\/70 {
+  background-color: rgb(19 25 32 / 0.7);
 }
