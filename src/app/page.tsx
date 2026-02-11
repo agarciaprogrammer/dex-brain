@@ -69,21 +69,29 @@ function daysUntilDeadline(deadline?: string): number | null {
 
 function calculateScore(task: Task): number {
   if (task.status === "Done") return 0;
-  let score = task.impact * 2 + task.urgency;
+  let score = task.impact * 4 + task.urgency * 3;
   const days = daysUntilDeadline(task.deadline);
   if (days !== null) {
-    score += 1000 - days * 20;
+    if (days <= 0) {
+      score += 20;
+    } else if (days <= 3) {
+      score += 15;
+    } else if (days <= 7) {
+      score += 10;
+    } else if (days <= 14) {
+      score += 5;
+    }
   }
   if (task.status === "Waiting") {
-    score -= 10;
+    score -= 3;
   }
   return score;
 }
 
 function calculateLevel(score: number) {
-  if (score >= 900) return "Critical";
-  if (score >= 30) return "High";
-  if (score >= 10) return "Medium";
+  if (score >= 45) return "Critical";
+  if (score >= 35) return "High";
+  if (score >= 25) return "Medium";
   return "Low";
 }
 
